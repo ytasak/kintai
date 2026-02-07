@@ -11,7 +11,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var startMode string
+var (
+	startMode string
+	startOnly string
+)
 
 var startCmd = &cobra.Command{
 	Use:   "start",
@@ -21,18 +24,28 @@ var startCmd = &cobra.Command{
 			return fmt.Errorf("--mode must be office or remote")
 		}
 
-		// 1) 勤怠ノ助：出社
-		t, err := kinnosuke.StampStart()
-		if err != nil {
-			return err
+		// --only バリデーション
+		if startOnly != "" && startOnly != "kinnosuke" && startOnly != "slack" {
+			return fmt.Errorf("--only must be kinnosuke or slack")
 		}
-		fmt.Printf("✔ 出社完了 (%s)\n", t)
 
-		// 2) Slack：開始スレにリアクション
-		if err := slackkintai.ReactStart(context.Background(), startMode); err != nil {
-			return err
+		// 勤怠ノ助：出社
+		if startOnly == "" || startOnly == "kinnosuke" {
+			t, err := kinnosuke.StampStart()
+			if err != nil {
+				return err
+			}
+			fmt.Printf("✔ 出社完了 (%s)\n", t)
 		}
-		fmt.Println("✔ Slackリアクション完了 (開始)")
+
+		// Slack：開始スレにリアクション
+		if startOnly == "" || startOnly == "slack" {
+			if err := slackkintai.ReactStart(context.Background(), startMode); err != nil {
+				return err
+			}
+			fmt.Println("✔ Slackリアクション完了 (開始)")
+		}
+
 		return nil
 	},
 }
@@ -40,15 +53,20 @@ var startCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(startCmd)
 	startCmd.Flags().StringVar(&startMode, "mode", "", "office|remote (required)")
+	startCmd.Flags().StringVar(&startOnly, "only", "", "kinnosuke|slack (省略時は両方実行)")
 	_ = startCmd.MarkFlagRequired("mode")
 
 	// envの未設定を早めに気づけるように（任意）
 	startCmd.PreRunE = func(cmd *cobra.Command, args []string) error {
-		_ = os.Getenv("KIN_COMPANYCD")
-		_ = os.Getenv("KIN_LOGINCD")
-		_ = os.Getenv("KIN_PASSWORD")
-		_ = os.Getenv("SLACK_TOKEN")
-		_ = os.Getenv("SLACK_CHANNEL")
+		if startOnly == "" || startOnly == "kinnosuke" {
+			_ = os.Getenv("KIN_COMPANYCD")
+			_ = os.Getenv("KIN_LOGINCD")
+			_ = os.Getenv("KIN_PASSWORD")
+		}
+		if startOnly == "" || startOnly == "slack" {
+			_ = os.Getenv("SLACK_TOKEN")
+			_ = os.Getenv("SLACK_CHANNEL")
+		}
 		return nil
 	}
 }
