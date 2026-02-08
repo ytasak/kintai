@@ -6,26 +6,38 @@
 
 - 勤之助への出社・退社打刻
 - Slackの勤怠リマインダーメッセージへのリアクション自動付与
+- `--only` フラグで勤之助・Slackを個別に実行可能
 
 ## 必要なもの
 
 - Go 1.25.4+
 - 勤之助アカウント
-- Slack Botトークン（`reactions:write`, `channels:history`, `channels:read` 権限）
+- Slackトークン（`reactions:write`, `channels:history`, `channels:read` 権限）
+
+### Slackトークンについて
+
+| トークン | プレフィックス | リアクション主体 |
+|---|---|---|
+| User Token | `xoxp-...` | 本人（推奨） |
+| Bot Token | `xoxb-...` | アプリ（Bot） |
+
+本人としてリアクションしたい場合は **User Token**（`xoxp-...`）を使用してください。
 
 ## セットアップ
 
 ### 1. 環境変数の設定
 
+プロジェクトルートに `.env` ファイルを作成するか、シェルの環境変数として設定してください。
+
 ```bash
 # 勤怠ノ助
-export KIN_COMPANYCD="..."
-export KIN_LOGINCD="..."
-export KIN_PASSWORD="..."
+KIN_COMPANYCD="..."
+KIN_LOGINCD="..."
+KIN_PASSWORD="..."
 
 # Slack
-export SLACK_TOKEN="xoxb-..."
-export SLACK_CHANNEL="mikasa-kintai"   # CxxxxのチャンネルID推奨
+SLACK_TOKEN="xoxp-..."
+SLACK_CHANNEL="mikasa-kintai"   # CxxxxのチャンネルID推奨
 ```
 
 ### 2. ビルド
@@ -37,15 +49,50 @@ go build
 
 ## 使い方
 
+### 出社打刻 (`start`)
+
 ```bash
-# 出社（オフィス）
+kintai start --mode <office|remote> [--only <kinnosuke|slack>]
+```
+
+| フラグ | 必須 | 値 | 説明 |
+|---|---|---|---|
+| `--mode` | Yes | `office` / `remote` | 出社種別 |
+| `--only` | No | `kinnosuke` / `slack` | 片方だけ実行（省略時は両方） |
+
+```bash
+# 出社（オフィス）- 勤之助 + Slack
 ./kintai start --mode office
 
-# 出社（リモート）
+# 出社（リモート）- 勤之助 + Slack
 ./kintai start --mode remote
 
-# 退社
+# 勤之助のみ
+./kintai start --mode office --only kinnosuke
+
+# Slackのみ
+./kintai start --mode remote --only slack
+```
+
+### 退社打刻 (`end`)
+
+```bash
+kintai end [--only <kinnosuke|slack>]
+```
+
+| フラグ | 必須 | 値 | 説明 |
+|---|---|---|---|
+| `--only` | No | `kinnosuke` / `slack` | 片方だけ実行（省略時は両方） |
+
+```bash
+# 退社 - 勤之助 + Slack
 ./kintai end
+
+# 勤之助のみ
+./kintai end --only kinnosuke
+
+# Slackのみ
+./kintai end --only slack
 ```
 
 ### 出力例
@@ -68,10 +115,10 @@ Slackチャンネル内の当日のリマインダーメッセージ（`リマ�
 ## プロジェクト構成
 
 ```
-main.go              エントリポイント
+main.go              エントリポイント（.env読み込み）
 cmd/
   root.go            Cobra CLIルートコマンド
-  start.go           出社コマンド (kintai start --mode <office|remote>)
+  start.go           出社コマンド (kintai start)
   end.go             退社コマンド (kintai end)
 internal/
   kinnosuke/
@@ -88,6 +135,10 @@ internal/
 go run . start --mode office
 go run . start --mode remote
 go run . end
+
+# 個別テスト
+go run . start --mode office --only kinnosuke
+go run . end --only slack
 ```
 
 ## ライセンス
