@@ -14,12 +14,13 @@ import (
 var endOnly string
 
 var endCmd = &cobra.Command{
-	Use:   "end",
-	Short: "退社打刻して、Slackの業務終了スレにリアクションする",
+	Use:     "end",
+	Aliases: []string{"e"},
+	Short:   "退社打刻して、Slackの業務終了スレにリアクションする",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// --only バリデーション
 		if endOnly != "" && endOnly != "kinnosuke" && endOnly != "slack" {
-			return fmt.Errorf("--only must be kinnosuke or slack")
+			return fmt.Errorf("--only(-o) must be kinnosuke(kin) or slack(s)")
 		}
 
 		// 勤怠ノ助：退社
@@ -45,10 +46,11 @@ var endCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(endCmd)
-	endCmd.Flags().StringVar(&endOnly, "only", "", "kinnosuke|slack (省略時は両方実行)")
+	endCmd.Flags().StringVarP(&endOnly, "only", "o", "", "kinnosuke(kin)|slack(s) (省略時は両方実行)")
 
 	// envの未設定を早めに気づけるように（任意）
 	endCmd.PreRunE = func(cmd *cobra.Command, args []string) error {
+		endOnly = normalizeOnly(endOnly)
 		if endOnly == "" || endOnly == "kinnosuke" {
 			_ = os.Getenv("KIN_COMPANYCD")
 			_ = os.Getenv("KIN_LOGINCD")

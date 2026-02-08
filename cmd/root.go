@@ -8,7 +8,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "kintai",
+	Use:   "kn",
 	Short: "Kinnosuke + Slack kintai helper",
 }
 
