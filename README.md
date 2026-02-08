@@ -44,55 +44,68 @@ SLACK_CHANNEL="mikasa-kintai"   # CxxxxのチャンネルID推奨
 
 ```bash
 go mod tidy
-go build
+go build -o kn
 ```
 
 ## 使い方
 
-### 出社打刻 (`start`)
+サブコマンド・フラグ・値はすべて短縮形が使える（長い形式もそのまま使用可能）。
+
+### 短縮マッピング
+
+| 対象 | 長い形式 | 短縮形 |
+|---|---|---|
+| サブコマンド | `start` / `end` | `s` / `e` |
+| フラグ | `--mode` / `--only` | `-m` / `-o` |
+| mode値 | `office` / `remote` | `o` / `r` |
+| only値 | `kinnosuke` / `slack` | `kin` / `s` |
+
+### 出社打刻 (`start` / `s`)
 
 ```bash
-kintai start --mode <office|remote> [--only <kinnosuke|slack>]
+kn s -m <o|r> [-o <kin|s>]
+# 長い形式: kn start --mode <office|remote> [--only <kinnosuke|slack>]
 ```
 
 | フラグ | 必須 | 値 | 説明 |
 |---|---|---|---|
-| `--mode` | Yes | `office` / `remote` | 出社種別 |
-| `--only` | No | `kinnosuke` / `slack` | 片方だけ実行（省略時は両方） |
+| `-m` / `--mode` | Yes | `o`(office) / `r`(remote) | 出社種別 |
+| `-o` / `--only` | No | `kin`(kinnosuke) / `s`(slack) | 片方だけ実行（省略時は両方） |
 
 ```bash
 # 出社（オフィス）- 勤之助 + Slack
-./kintai start --mode office
+./kn s -m o
 
 # 出社（リモート）- 勤之助 + Slack
-./kintai start --mode remote
+./kn s -m r
 
 # 勤之助のみ
-./kintai start --mode office --only kinnosuke
+./kn s -m o -o kin
 
 # Slackのみ
-./kintai start --mode remote --only slack
+./kn s -m r -o s
 ```
 
-### 退社打刻 (`end`)
+### 退社打刻 (`end` / `e`)
 
 ```bash
-kintai end [--only <kinnosuke|slack>]
+kn e [-o <kin|s>]
+# 長い形式: kn end [--only <kinnosuke|slack>]
 ```
 
 | フラグ | 必須 | 値 | 説明 |
 |---|---|---|---|
-| `--only` | No | `kinnosuke` / `slack` | 片方だけ実行（省略時は両方） |
+| `-o` / `--only` | No | `kin`(kinnosuke) / `s`(slack) | 片方だけ実行（省略時は両方） |
 
 ```bash
 # 退社 - 勤之助 + Slack
-./kintai end
+./kn e
 
 # 勤之助のみ
-./kintai end --only kinnosuke
+./kn e -o kin
 
 # Slackのみ
-./kintai end --only slack
+./kn e -o s
 ```
 
 ### 出力例
@@ -106,9 +119,9 @@ kintai end [--only <kinnosuke|slack>]
 
 | コマンド | リアクション |
 |---|---|
-| `start --mode office` | :shussha: |
-| `start --mode remote` | :remote-start: |
-| `end` | :tai-kin: |
+| `s -m o` (`start --mode office`) | :shussha: |
+| `s -m r` (`start --mode remote`) | :remote-start: |
+| `e` (`end`) | :tai-kin: |
 
 Slackチャンネル内の当日のリマインダーメッセージ（`リマインダー：業務開始スレ` / `リマインダー：業務終了スレ`）を自動検索し、リアクションを付与します。
 
@@ -118,8 +131,8 @@ Slackチャンネル内の当日のリマインダーメッセージ（`リマ�
 main.go              エントリポイント（.env読み込み）
 cmd/
   root.go            Cobra CLIルートコマンド
-  start.go           出社コマンド (kintai start)
-  end.go             退社コマンド (kintai end)
+  start.go           出社コマンド (kn start / kn s)
+  end.go             退社コマンド (kn end / kn e)
 internal/
   kinnosuke/
     client.go        勤之助HTTPクライアント（Cookie/セッション管理）
@@ -132,11 +145,15 @@ internal/
 
 ```bash
 # ビルドせずに直接実行
-go run . start --mode office
-go run . start --mode remote
-go run . end
+go run . s -m o
+go run . s -m r
+go run . e
 
-# 個別テスト
+# 個別テスト（短縮形）
+go run . s -m o -o kin
+go run . e -o s
+
+# 長い形式も使用可能
 go run . start --mode office --only kinnosuke
 go run . end --only slack
 ```

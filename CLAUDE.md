@@ -40,48 +40,62 @@ SLACK_CHANNEL="mikasa-kintai"   # 可能ならCxxxxのID推奨
 
 ## CLIコマンド
 
-### `kintai start` - 出社打刻
+バイナリ名は `kn`。サブコマンド・フラグ・値はすべて短縮形が使える（長い形式もそのまま使用可能）。
+
+### 短縮マッピング
+
+| 対象 | 長い形式 | 短縮形 |
+|---|---|---|
+| バイナリ | `kintai` | `kn` |
+| サブコマンド | `start` / `end` | `s` / `e` |
+| フラグ | `--mode` / `--only` | `-m` / `-o` |
+| mode値 | `office` / `remote` | `o` / `r` |
+| only値 | `kinnosuke` / `slack` | `kin` / `s` |
+
+### `kn start` (`kn s`) - 出社打刻
 
 ```bash
-kintai start --mode <office|remote> [--only <kinnosuke|slack>]
+kn s -m <o|r> [-o <kin|s>]
+# 長い形式: kn start --mode <office|remote> [--only <kinnosuke|slack>]
 ```
 
 | フラグ | 必須 | 値 | 説明 |
 |---|---|---|---|
-| `--mode` | Yes | `office` / `remote` | 出社種別 |
-| `--only` | No | `kinnosuke` / `slack` | 片方だけ実行（省略時は両方） |
+| `-m` / `--mode` | Yes | `o`(office) / `r`(remote) | 出社種別 |
+| `-o` / `--only` | No | `kin`(kinnosuke) / `s`(slack) | 片方だけ実行（省略時は両方） |
 
 ```bash
 # 出社（勤之助 + Slack）
-kintai start --mode office
-kintai start --mode remote
+kn s -m o
+kn s -m r
 
 # 勤之助のみ
-kintai start --mode office --only kinnosuke
+kn s -m o -o kin
 
 # Slackのみ
-kintai start --mode office --only slack
+kn s -m o -o s
 ```
 
-### `kintai end` - 退社打刻
+### `kn end` (`kn e`) - 退社打刻
 
 ```bash
-kintai end [--only <kinnosuke|slack>]
+kn e [-o <kin|s>]
+# 長い形式: kn end [--only <kinnosuke|slack>]
 ```
 
 | フラグ | 必須 | 値 | 説明 |
 |---|---|---|---|
-| `--only` | No | `kinnosuke` / `slack` | 片方だけ実行（省略時は両方） |
+| `-o` / `--only` | No | `kin`(kinnosuke) / `s`(slack) | 片方だけ実行（省略時は両方） |
 
 ```bash
 # 退社（勤之助 + Slack）
-kintai end
+kn e
 
 # 勤之助のみ
-kintai end --only kinnosuke
+kn e -o kin
 
 # Slackのみ
-kintai end --only slack
+kn e -o s
 ```
 
 ## ビルド・実行
@@ -91,13 +105,13 @@ kintai end --only slack
 go mod tidy
 
 # ビルドして実行
-go build
-./kintai start --mode office
-./kintai end
+go build -o kn
+./kn s -m o
+./kn e
 
 # ビルドせずに直接実行（開発時）
-go run . start --mode office
-go run . end
+go run . s -m o
+go run . e
 ```
 
 ## アーキテクチャ
@@ -105,9 +119,9 @@ go run . end
 ```
 main.go          → エントリポイント（godotenvで.env読み込み → cmd.Execute()）
 cmd/
-  root.go        → Cobra CLIのルートコマンド定義
-  start.go       → `kintai start` 出社コマンド（--mode, --only フラグ）
-  end.go         → `kintai end` 退社コマンド（--only フラグ）
+  root.go        → Cobra CLIのルートコマンド定義（バイナリ名: kn）
+  start.go       → `kn start(s)` 出社コマンド（-m, -o フラグ、値の短縮正規化）
+  end.go         → `kn end(e)` 退社コマンド（-o フラグ、値の短縮正規化）
 internal/
   kinnosuke/
     client.go    → 勤之助へのHTTPクライアント（Cookie管理・フォームPOST）
