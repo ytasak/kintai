@@ -19,6 +19,10 @@ KIN_PASSWORD="..."
 # Slack
 SLACK_TOKEN="xoxp-..."
 SLACK_CHANNEL="mikasa-kintai"   # 可能ならCxxxxのID推奨
+
+# Slack OAuth（kn auth 用）
+SLACK_CLIENT_ID="..."
+SLACK_CLIENT_SECRET="..."
 ```
 
 | 変数名 | 用途 |
@@ -26,8 +30,10 @@ SLACK_CHANNEL="mikasa-kintai"   # 可能ならCxxxxのID推奨
 | `KIN_COMPANYCD` | 勤之助の会社コード |
 | `KIN_LOGINCD` | 勤之助のログインID |
 | `KIN_PASSWORD` | 勤之助のパスワード |
-| `SLACK_TOKEN` | Slackトークン（User Token `xoxp-...` 推奨。本人としてリアクションされる） |
+| `SLACK_TOKEN` | Slackトークン（User Token `xoxp-...` 推奨。`kn auth` で自動取得可能） |
 | `SLACK_CHANNEL` | Slackチャンネル名またはID（`C`始まりのID推奨） |
+| `SLACK_CLIENT_ID` | Slack AppのClient ID（`kn auth` 用） |
+| `SLACK_CLIENT_SECRET` | Slack AppのClient Secret（`kn auth` 用） |
 
 ### Slackトークンの種類
 
@@ -47,7 +53,7 @@ SLACK_CHANNEL="mikasa-kintai"   # 可能ならCxxxxのID推奨
 | 対象 | 長い形式 | 短縮形 |
 |---|---|---|
 | バイナリ | `kintai` | `kn` |
-| サブコマンド | `start` / `end` | `s` / `e` |
+| サブコマンド | `start` / `end` / `auth` | `s` / `e` / `a` |
 | フラグ | `--mode` / `--only` | `-m` / `-o` |
 | mode値 | `office` / `remote` | `o` / `r` |
 | only値 | `kinnosuke` / `slack` | `kin` / `s` |
@@ -98,6 +104,27 @@ kn e -o kin
 kn e -o s
 ```
 
+### `kn auth` (`kn a`) - Slack OAuth トークン取得
+
+```bash
+kn a
+# 長い形式: kn auth
+```
+
+Slack OAuth 2.0 フローを実行し、User Token (`xoxp-...`) を取得して `.env` に自動保存する。
+
+**前提条件:**
+1. Slack App の **Redirect URLs** に `http://localhost:9876/callback` を追加
+2. **User Token Scopes** に `reactions:write`, `channels:history`, `channels:read` を追加
+3. `.env` に `SLACK_CLIENT_ID` と `SLACK_CLIENT_SECRET` を記載
+
+**処理フロー:**
+1. ローカルサーバー (`localhost:9876`) を起動
+2. ブラウザで Slack 認可ページを開く
+3. ユーザーが認可すると、コールバックで認可コードを受信
+4. コード → トークン交換
+5. 取得した User Token を `.env` の `SLACK_TOKEN` に保存
+
 ## ビルド・実行
 
 ```bash
@@ -122,7 +149,11 @@ cmd/
   root.go        → Cobra CLIのルートコマンド定義（バイナリ名: kn）
   start.go       → `kn start(s)` 出社コマンド（-m, -o フラグ、値の短縮正規化）
   end.go         → `kn end(e)` 退社コマンド（-o フラグ、値の短縮正規化）
+  auth.go        → `kn auth(a)` Slack OAuthトークン取得コマンド
 internal/
+  auth/
+    oauth.go     → Slack OAuth 2.0 フロー（ローカルサーバー・ブラウザ認可・トークン交換）
+    dotenv.go    → .envファイル更新ユーティリティ（SLACK_TOKENの上書き・追加）
   kinnosuke/
     client.go    → 勤之助へのHTTPクライアント（Cookie管理・フォームPOST）
     parse.go     → HTMLのregexパース、ログイン、CSRF取得、打刻処理

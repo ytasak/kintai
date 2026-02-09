@@ -7,21 +7,18 @@
 - 勤之助への出社・退社打刻
 - Slackの勤怠リマインダーメッセージへのリアクション自動付与
 - `--only` フラグで勤之助・Slackを個別に実行可能
+- Slack OAuth 2.0 による User Token の自動取得（`kn auth`）
 
 ## 必要なもの
 
 - Go 1.25.4+
 - 勤之助アカウント
-- Slackトークン（`reactions:write`, `channels:history`, `channels:read` 権限）
+- Slack App（`reactions:write`, `channels:history`, `channels:read` 権限）
 
 ### Slackトークンについて
 
-| トークン | プレフィックス | リアクション主体 |
-|---|---|---|
-| User Token | `xoxp-...` | 本人（推奨） |
-| Bot Token | `xoxb-...` | アプリ（Bot） |
-
-本人としてリアクションしたい場合は **User Token**（`xoxp-...`）を使用してください。
+本ツールは **User Token**（`xoxp-...`）を使用します。本人としてリアクションが付与されます。
+`kn auth` コマンドで OAuth フローを実行すれば自動取得できます。
 
 ## セットアップ
 
@@ -36,11 +33,27 @@ KIN_LOGINCD="..."
 KIN_PASSWORD="..."
 
 # Slack
-SLACK_TOKEN="xoxp-..."
-SLACK_CHANNEL="mikasa-kintai"   # CxxxxのチャンネルID推奨
+SLACK_TOKEN="xoxp-..."             # kn auth で自動取得可能
+SLACK_CHANNEL="..."      # CxxxxのチャンネルID推奨
+
+# Slack OAuth（kn auth 用）
+SLACK_CLIENT_ID="..."
+SLACK_CLIENT_SECRET="..."
 ```
 
-### 2. ビルド
+> `SLACK_TOKEN` は `kn auth` コマンドで自動取得・保存できます。手動設定も可能です。
+
+### 2. Slack App の設定（`kn auth` を使う場合）
+
+1. [api.slack.com/apps](https://api.slack.com/apps) で App を作成（または既存の App を使用）
+2. **Basic Information** → App Credentials から `Client ID` / `Client Secret` を `.env` に記載
+3. **OAuth & Permissions** → **Redirect URLs** に `https://localhost:9876/callback` を追加
+4. **OAuth & Permissions** → **User Token Scopes** に以下を追加:
+   - `reactions:write`
+   - `channels:history`
+   - `channels:read`
+
+### 3. ビルド
 
 ```bash
 go mod tidy
@@ -55,10 +68,25 @@ go build -o kn
 
 | 対象 | 長い形式 | 短縮形 |
 |---|---|---|
-| サブコマンド | `start` / `end` | `s` / `e` |
+| サブコマンド | `start` / `end` / `auth` | `s` / `e` / `a` |
 | フラグ | `--mode` / `--only` | `-m` / `-o` |
 | mode値 | `office` / `remote` | `o` / `r` |
 | only値 | `kinnosuke` / `slack` | `kin` / `s` |
+
+### Slack認証 (`auth` / `a`)
+
+```bash
+kn a
+# 長い形式: kn auth
+```
+
+Slack OAuth 2.0 フローを実行し、User Token を取得して `.env` に自動保存します。
+
+1. ローカルに HTTPS サーバーを起動
+2. ブラウザで Slack 認可ページを開く
+3. 認可後、取得したトークンを `.env` の `SLACK_TOKEN` に保存
+
+> 初回のコールバック時にブラウザが証明書の警告を出す場合があります。「詳細設定」→「localhost にアクセスする」で続行してください。
 
 ### 出社打刻 (`start` / `s`)
 
@@ -133,7 +161,11 @@ cmd/
   root.go            Cobra CLIルートコマンド
   start.go           出社コマンド (kn start / kn s)
   end.go             退社コマンド (kn end / kn e)
+  auth.go            Slack認証コマンド (kn auth / kn a)
 internal/
+  auth/
+    oauth.go         Slack OAuth 2.0 フロー（HTTPS・ブラウザ認可・トークン交換）
+    dotenv.go        .envファイル更新ユーティリティ
   kinnosuke/
     client.go        勤之助HTTPクライアント（Cookie/セッション管理）
     parse.go         HTMLパース・ログイン・CSRF取得・打刻処理
@@ -148,6 +180,9 @@ internal/
 go run . s -m o
 go run . s -m r
 go run . e
+
+# Slack認証
+go run . a
 
 # 個別テスト（短縮形）
 go run . s -m o -o kin
