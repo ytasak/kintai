@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	startText = "リマインダー：業務開始スレ"
-	endText   = "リマインダー：業務終了スレ"
+	startText = "リマインダー : 業務開始スレ"
+	endText   = "リマインダー : 業務終了スレ"
 )
 
 func ReactStart(ctx context.Context, mode string) error {
